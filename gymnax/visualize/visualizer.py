@@ -59,9 +59,8 @@ class Visualizer(object):
             "MountainCarContinuous-v0",
         ]:
             import gym
-
             # Animations have to use older gym version and pyglet!
-            assert gym.__version__ == "0.19.0"
+            # assert gym.__version__ == "0.19.0"
             self.im = init_gym(
                 self.ax, self.env, self.state_seq[0], self.env_params
             )
