@@ -22,7 +22,7 @@ class EnvState:
 @struct.dataclass
 class EnvParams:
     deterministic: bool = True
-    sample_action_map: bool = False
+    resample_action_map: bool = False
     unscaled_move_cost: float = 0.01
     randomize_actions: bool = False
     max_steps_in_episode: int = 2000
@@ -33,11 +33,13 @@ class DeepSea(environment.Environment):
     JAX Compatible version of DeepSea bsuite environment. Source:
     github.com/deepmind/bsuite/blob/master/bsuite/environments/deep_sea.py
     """
-
-    def __init__(self, size: int = 8):
+    def __init__(self, size: int = 8, sample_action_map=True, action_mapping_rng_key: chex.PRNGKey = jax.random.PRNGKey(42)):
         super().__init__()
         self.size = size
-        self.action_mapping = jnp.ones([size, size])
+        if sample_action_map:
+            self.fixed_action_mapping = jax.random.bernoulli(action_mapping_rng_key, 0.5, (size, size))
+        else: 
+            self.fixed_action_mapping = jnp.ones([self.size, self.size])
 
     @property
     def default_params(self) -> EnvParams:
@@ -46,7 +48,7 @@ class DeepSea(environment.Environment):
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: int, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+    ) -> Tuple[chex.Array, EnvState, float, bool, dict]: 
         """Perform single timestep state transition."""
         # Pull out randomness for easier testing
         rng_reward, rng_trans = jax.random.split(key)
@@ -99,19 +101,11 @@ class DeepSea(environment.Environment):
         optimal_return = optimal_no_cost - params.unscaled_move_cost
 
         a_map_rand = jax.random.bernoulli(key, 0.5, (self.size, self.size))
-        a_map_determ = jnp.ones([self.size, self.size])
+        new_a_map_cond = params.resample_action_map # sample a new map?
 
-        new_a_map_cond = jnp.logical_and(
-            1 - params.deterministic, params.sample_action_map
-        )
-        old_a_map_cond = jnp.logical_and(
-            1 - params.deterministic,
-            1 - params.sample_action_map,
-        )
         action_mapping = (
-            params.deterministic * a_map_determ
-            + new_a_map_cond * a_map_rand
-            + old_a_map_cond * self.action_mapping
+            new_a_map_cond * a_map_rand +
+            (1 - new_a_map_cond) * self.fixed_action_mapping
         )
 
         state = EnvState(0, 0, False, 0, 0, optimal_return, action_mapping, 0)
