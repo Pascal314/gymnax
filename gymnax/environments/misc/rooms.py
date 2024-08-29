@@ -155,7 +155,7 @@ class FourRooms(environment.Environment[EnvState, EnvParams]):
                     state.pos[1],
                     state.goal[0],
                     state.goal[1],
-                ]
+                ].astype(jnp.float32)
             )
         else:
             agent_map = jnp.zeros(self.occupied_map.shape)
