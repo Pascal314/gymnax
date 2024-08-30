@@ -126,7 +126,7 @@ class FourRooms(environment.Environment[EnvState, EnvParams]):
         return (
             lax.stop_gradient(self.get_obs(state)),
             lax.stop_gradient(state),
-            reward,
+            reward.astype(jnp.float32),
             done,
             {"discount": self.discount(state, params)},
         )
